@@ -30,5 +30,23 @@ npm run build
 npm start
 ```
 
+## Docker
+
+`Dockerfile` builds a production image that runs as the unprivileged `node` user.
+`.github/workflows/docker-publish.yml` publishes it to `ghcr.io/seraphinteractive/platform-discord`
+on every push to `main` (`latest`, `main`, `sha-<short>`) and on `v*.*.*` tags (`X.Y.Z`, `X.Y`);
+pull requests only build.
+
+```bash
+docker build -t platform-discord .
+# /app/data holds the channel settings chosen with /set-announcement-channel: keep it on a volume
+docker run --rm --env-file .env -v bot_data:/app/data platform-discord
+# register slash commands from inside the image (no tsx needed)
+docker run --rm --env-file .env platform-discord node dist/bot/deploy-commands.js
+```
+
+The production stack (API, Postgres, Redis, Dokploy) lives in
+[Platform-Deployment](https://github.com/SeraphInteractive/Platform-Deployment).
+
 ## License
 MIT
