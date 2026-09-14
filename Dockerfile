@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # compile typescript into dist/
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
-COPY tsconfig.json ./
+COPY package.json tsconfig.json ./
 COPY src ./src
 RUN npm run build
 
