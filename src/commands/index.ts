@@ -1,3 +1,4 @@
+import * as helpCommand from './help.js';
 import * as roundsCommand from './rounds.js';
 import * as roundCommand from './round.js';
 import * as entriesCommand from './entries.js';
@@ -14,6 +15,7 @@ export interface Command {
 }
 
 export const commands: Command[] = [
+  helpCommand,
   roundsCommand,
   roundCommand,
   entriesCommand,
