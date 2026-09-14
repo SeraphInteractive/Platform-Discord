@@ -7,6 +7,7 @@ import {
 } from 'discord.js';
 import { commandMap } from '../commands/index.js';
 import { handleEntryPagination } from '../commands/entries.js';
+import { handleRoundSelectMenuInteraction, handleRoundAutocomplete } from './round-selector.js';
 import { apiClient } from '../api/client.js';
 import { BackgroundEventWorker } from '../workers/sse-worker.js';
 
@@ -21,8 +22,8 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
   const worker = new BackgroundEventWorker(client);
 
   client.once(Events.ClientReady, (readyClient) => {
-    console.log(`🤖 Logged in as ${readyClient.user.tag} (${readyClient.user.id})`);
-    
+    console.log(`Bot initialized as ${readyClient.user.tag} (${readyClient.user.id})`);
+
     readyClient.user.setPresence({
       activities: [
         {
@@ -38,7 +39,44 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
   });
 
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-    // 1. Handle Slash Commands
+    // 1. Handle Autocomplete Interactions
+    if (interaction.isAutocomplete()) {
+      const command = commandMap.get(interaction.commandName);
+      try {
+        if (command && typeof command.autocomplete === 'function') {
+          await command.autocomplete(interaction);
+        } else {
+          await handleRoundAutocomplete(interaction);
+        }
+      } catch (error) {
+        console.error(`Error during autocomplete for /${interaction.commandName}:`, error);
+        await interaction.respond([]).catch(() => {});
+      }
+      return;
+    }
+
+    // 2. Handle String Select Menu (Dropdown) Interactions
+    if (interaction.isStringSelectMenu()) {
+      if (interaction.customId.startsWith('select_round:')) {
+        try {
+          await handleRoundSelectMenuInteraction(interaction);
+        } catch (error) {
+          console.error('Error handling round select dropdown:', error);
+          const errorPayload = {
+            content: '**ERROR:** An unexpected error occurred while processing selection.',
+            ephemeral: true,
+          };
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(errorPayload).catch(() => {});
+          } else {
+            await interaction.reply(errorPayload).catch(() => {});
+          }
+        }
+        return;
+      }
+    }
+
+    // 3. Handle Slash Commands
     if (interaction.isChatInputCommand()) {
       const command = commandMap.get(interaction.commandName);
       if (!command) {
@@ -51,7 +89,7 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
       } catch (error: any) {
         console.error(`Error executing /${interaction.commandName}:`, error);
         const errorMessage = {
-          content: '⚠️ An error occurred while executing this command.',
+          content: '**ERROR:** An error occurred while executing this command.',
           ephemeral: true,
         };
 
@@ -64,7 +102,7 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
       return;
     }
 
-    // 2. Handle Button Interactions (e.g. entry pagination)
+    // 4. Handle Button Interactions (e.g. entry pagination)
     if (interaction.isButton()) {
       const customId = interaction.customId;
       if (customId.startsWith('entry_')) {
@@ -80,7 +118,7 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
           } catch (err: any) {
             console.error('Error handling entry pagination button:', err);
             await interaction.reply({
-              content: '❌ Failed to load entry page. The round or candidate data may have changed.',
+              content: '**ERROR:** Failed to load entry page. The round or candidate data may have changed.',
               ephemeral: true,
             }).catch(() => {});
           }

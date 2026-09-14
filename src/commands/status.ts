@@ -3,16 +3,23 @@ import {
   ChatInputCommandInteraction,
   PermissionFlagsBits,
 } from 'discord.js';
-import { config } from '../config.js';
+import { config, isAuthorizedAdmin } from '../config.js';
 import { channelStore } from '../storage/channel-store.js';
 
 export const data = new SlashCommandBuilder()
   .setName('bot-status')
-  .setDescription('Check bot gateway ping, voting API target, and active announcement channels')
+  .setDescription('System telemetry: gateway latency, API target, and worker routing (Authorized staff only)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers);
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
+
+  if (!isAuthorizedAdmin(interaction.user.id)) {
+    await interaction.editReply({
+      content: '`[ACCESS DENIED]` You are not authorized to view bot diagnostics.',
+    });
+    return;
+  }
 
   const client = interaction.client;
   const latency = client.ws.ping;
@@ -21,22 +28,24 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const announcementText = announcementChannelId
     ? `<#${announcementChannelId}> (\`${announcementChannelId}\`)`
-    : '*Not configured (use /set-announcement-channel)*';
+    : '`[NOT CONFIGURED]`';
 
   const telemetryText = telemetryChannelId
     ? `<#${telemetryChannelId}> (\`${telemetryChannelId}\`)`
-    : '*Not configured (use /set-announcement-channel)*';
+    : '`[NOT CONFIGURED]`';
 
   const statusText =
-    `🤖 **Platform Bot & Worker Status**\n\n` +
-    `• **Gateway Ping:** \`${latency >= 0 ? `${latency}ms` : 'Connecting...'}\`\n` +
-    `• **Voting API Target:** \`${config.apiBaseUrl}\`\n` +
-    `• **Web Studio Target:** \`${config.webAppUrl}\`\n` +
-    `• **API Bearer Token:** \`${config.apiBearerToken ? 'Configured ✅' : 'Missing ⚠️'}\`\n` +
-    `• **Winner Channel:** ${announcementText}\n` +
-    `• **Raid Alert Channel:** ${telemetryText}\n` +
-    `• **SSE Poll Interval:** \`${config.ssePollIntervalMs}ms\`\n` +
-    `• **Operational Mode:** \`Read-Only Client (No direct DB mutation)\``;
+    `**SYSTEM DIAGNOSTICS: DISCORD WORKER & EVENT PIPELINE**\n\n` +
+    '```\n' +
+    `Gateway Ping Latency : ${latency >= 0 ? `${latency}ms` : 'Connecting...'}\n` +
+    `API Backend Target   : ${config.apiBaseUrl}\n` +
+    `Web Platform Target  : ${config.webAppUrl}\n` +
+    `API Token Status     : ${config.apiBearerToken ? 'ACTIVE' : 'NONE (ANONYMOUS)'}\n` +
+    `SSE Polling Window   : ${config.ssePollIntervalMs}ms\n` +
+    `Operational Mode     : READ_ONLY_CLIENT\n` +
+    '```\n' +
+    `- Announcements Channel : ${announcementText}\n` +
+    `- Telemetry Alert Stream : ${telemetryText}`;
 
   await interaction.editReply({ content: statusText });
 }

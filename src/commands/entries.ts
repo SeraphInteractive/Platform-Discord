@@ -2,35 +2,72 @@ import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
   ButtonInteraction,
+  AutocompleteInteraction,
 } from 'discord.js';
 import { apiClient } from '../api/client.js';
 import { createSingleEntryEmbed, createEntryPaginationRow } from '../bot/embeds.js';
+import {
+  handleRoundAutocomplete,
+  fetchSortedRounds,
+  createRoundSelectMenu,
+  sortEntriesByDate,
+} from '../bot/round-selector.js';
 import { Entry, Round } from '../api/types.js';
 
 export const data = new SlashCommandBuilder()
   .setName('entries')
-  .setDescription('Browse candidate entries interactively with thumbnails, media, and creator bios')
+  .setDescription('Browse candidate entries with media preview and author attribution')
   .addStringOption((option) =>
     option
-      .setName('round_id')
-      .setDescription('The UUID of the voting round')
-      .setRequired(true)
+      .setName('round')
+      .setDescription('Select a voting round (or leave blank to pick from list)')
+      .setAutocomplete(true)
+      .setRequired(false)
   );
 
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  await handleRoundAutocomplete(interaction);
+}
+
 export async function execute(interaction: ChatInputCommandInteraction) {
+  const roundId = interaction.options.getString('round')?.trim();
+
+  if (!roundId) {
+    await interaction.deferReply();
+    try {
+      const rounds = await fetchSortedRounds();
+      if (rounds.length === 0) {
+        await interaction.editReply({
+          content: 'No registered voting rounds found.',
+        });
+        return;
+      }
+      const selectRow = createRoundSelectMenu('entries', rounds, 'Select a round to browse entries...');
+      await interaction.editReply({
+        content: '**BROWSE CANDIDATE ENTRIES**\nChoose a round from the dropdown menu:',
+        components: [selectRow],
+      });
+    } catch (error: any) {
+      await interaction.editReply({
+        content: `**ERROR:** Failed to fetch rounds: ${error.message || 'API unreachable.'}`,
+      });
+    }
+    return;
+  }
+
   await interaction.deferReply();
 
-  const roundId = interaction.options.getString('round_id', true).trim();
-
   try {
-    const [round, entries] = await Promise.all([
+    const [round, rawEntries] = await Promise.all([
       apiClient.getRound(roundId),
       apiClient.getEntries(roundId),
     ]);
 
+    const entries = sortEntriesByDate(rawEntries);
+
     if (!entries || entries.length === 0) {
       await interaction.editReply({
-        content: `ℹ️ No candidate entries found for round **${round.title}**.`,
+        content: `No candidate entries found for round: **${round.title}**.`,
       });
       return;
     }
@@ -45,7 +82,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     });
   } catch (error: any) {
     await interaction.editReply({
-      content: `❌ **Failed to retrieve entries:** ${error.message || 'Error fetching entries.'}`,
+      content: `**ERROR:** Failed to retrieve entries: ${error.message || 'Error fetching entries.'}`,
     });
   }
 }
@@ -53,8 +90,9 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 /**
  * Handles interactive button pagination clicks for entries
  */
-export async function handleEntryPagination(interaction: ButtonInteraction, round: Round, entries: Entry[]) {
-  const customId = interaction.customId; // e.g. "entry_next:uuid:2" or "entry_first:uuid"
+export async function handleEntryPagination(interaction: ButtonInteraction, round: Round, rawEntries: Entry[]) {
+  const entries = sortEntriesByDate(rawEntries);
+  const customId = interaction.customId;
   const parts = customId.split(':');
   const action = parts[0];
   const targetIndexStr = parts[2];

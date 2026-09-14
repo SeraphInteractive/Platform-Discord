@@ -10,27 +10,16 @@ import {
 import { config } from '../config.js';
 
 export const COLORS = {
-  BRAND_PURPLE: 0x8b5cf6,
-  EMERALD_GREEN: 0x10b981,
-  AMBER_GOLD: 0xf59e0b,
-  CRIMSON_RED: 0xef4444,
   DARK_SLATE: 0x1e293b,
+  BRAND_BLUE: 0x2563eb,
+  SUCCESS_GREEN: 0x10b981,
+  WARNING_AMBER: 0xf59e0b,
+  CRIMSON_RED: 0xef4444,
   MUTED_GRAY: 0x64748b,
 };
 
-export function getStatusEmoji(status: string): string {
-  switch (status.toLowerCase()) {
-    case 'open':
-      return '🟢 **OPEN**';
-    case 'closed':
-      return '🟡 **CLOSED**';
-    case 'finalized':
-      return '🟣 **FINALIZED**';
-    case 'draft':
-      return '⚪ **DRAFT**';
-    default:
-      return `🔘 **${status.toUpperCase()}**`;
-  }
+export function getStatusBadge(status: string): string {
+  return `\`[${status.toUpperCase()}]\``;
 }
 
 export function formatDate(isoString: string | null): string {
@@ -41,13 +30,13 @@ export function formatDate(isoString: string | null): string {
 }
 
 /**
- * Creates the "Vote on Web" button action row
+ * Creates the "Open Web App" link button row
  */
 export function createVoteButtonRow(roundId: string): ActionRowBuilder<ButtonBuilder> {
   const voteUrl = `${config.webAppUrl}/studio`;
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel('🗳️ Open Voting Platform')
+      .setLabel('Open Web App')
       .setStyle(ButtonStyle.Link)
       .setURL(voteUrl)
   );
@@ -58,32 +47,32 @@ export function createVoteButtonRow(roundId: string): ActionRowBuilder<ButtonBui
  */
 export function createRoundsEmbed(rounds: Round[]): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle('🎬 Community Voting Rounds')
-    .setDescription('Explore all registered community voting rounds.')
-    .setColor(COLORS.BRAND_PURPLE)
+    .setTitle('Voting Rounds')
+    .setDescription('Registered community rounds.')
+    .setColor(COLORS.DARK_SLATE)
     .setTimestamp();
 
   if (rounds.length === 0) {
     embed.addFields({
-      name: 'No Rounds Found',
-      value: 'There are currently no active or upcoming voting rounds.',
+      name: 'Status',
+      value: 'No voting rounds found.',
     });
     return embed;
   }
 
   for (const round of rounds) {
-    const statusText = getStatusEmoji(round.status);
+    const statusBadge = getStatusBadge(round.status);
     const opens = round.opensAt ? `Opens: <t:${Math.floor(new Date(round.opensAt).getTime() / 1000)}:R>` : 'Opens: TBA';
     const closes = round.closesAt ? `Closes: <t:${Math.floor(new Date(round.closesAt).getTime() / 1000)}:R>` : 'Closes: TBA';
 
     embed.addFields({
       name: `${round.title}`,
-      value: `${statusText} · \`ID: ${round.id}\`\n${round.description || 'No description provided.'}\n🗓️ ${opens} | ${closes}`,
+      value: `${statusBadge} | ID: \`${round.id}\`\n${round.description || 'No description.'}\n${opens} | ${closes}`,
       inline: false,
     });
   }
 
-  embed.setFooter({ text: 'Use /round <id> for details or /entries <id> to browse candidates.' });
+  embed.setFooter({ text: 'Use /round, /entries, or /leaderboard to view round details.' });
   return embed;
 }
 
@@ -92,13 +81,13 @@ export function createRoundsEmbed(rounds: Round[]): EmbedBuilder {
  */
 export function createRoundDetailEmbed(round: Round, entries?: Entry[]): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(`🎬 Round: ${round.title}`)
+    .setTitle(`Round: ${round.title}`)
     .setDescription(round.description || 'No description provided.')
-    .setColor(round.status === 'open' ? COLORS.EMERALD_GREEN : round.status === 'finalized' ? COLORS.BRAND_PURPLE : COLORS.MUTED_GRAY)
+    .setColor(round.status === 'open' ? COLORS.SUCCESS_GREEN : round.status === 'finalized' ? COLORS.BRAND_BLUE : COLORS.MUTED_GRAY)
     .addFields(
-      { name: 'Status', value: getStatusEmoji(round.status), inline: true },
+      { name: 'Status', value: getStatusBadge(round.status), inline: true },
       { name: 'Round ID', value: `\`${round.id}\``, inline: true },
-      { name: 'Candidates Count', value: entries ? `**${entries.length}** entries` : 'Fetching...', inline: true },
+      { name: 'Entries', value: entries ? `\`${entries.length}\`` : '`Loading...`', inline: true },
       { name: 'Opens At', value: formatDate(round.opensAt), inline: false },
       { name: 'Closes At', value: formatDate(round.closesAt), inline: false }
     )
@@ -107,18 +96,18 @@ export function createRoundDetailEmbed(round: Round, entries?: Entry[]): EmbedBu
   if (entries && entries.length > 0) {
     const previewList = entries
       .slice(0, 6)
-      .map((e, idx) => `**${idx + 1}.** ${e.title} ${e.author ? `*(by ${e.author})*` : ''} ${e.isQuarantined ? '⚠️ [QUARANTINED]' : ''}`)
+      .map((e, idx) => `${idx + 1}. **${e.title}** ${e.author ? `(${e.author})` : ''} ${e.isQuarantined ? '`[QUARANTINED]`' : ''}`)
       .join('\n');
 
-    const suffix = entries.length > 6 ? `\n*...and ${entries.length - 6} more. Use \`/entries ${round.id}\` to browse.*` : '';
+    const suffix = entries.length > 6 ? `\n*...and ${entries.length - 6} more.*` : '';
     embed.addFields({
-      name: 'Candidate Preview',
+      name: 'Submitted Entries (Sorted by Date)',
       value: previewList + suffix,
       inline: false,
     });
   }
 
-  embed.setFooter({ text: 'Governance & Voting Engine' });
+  embed.setFooter({ text: 'Platform Voting System' });
   return embed;
 }
 
@@ -132,14 +121,15 @@ export function createSingleEntryEmbed(
   totalEntries: number
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(`🎨 Candidate [${currentIndex + 1}/${totalEntries}]: ${entry.title}`)
-    .setDescription(entry.description || '*No description provided for this submission.*')
-    .setColor(entry.isQuarantined ? COLORS.CRIMSON_RED : COLORS.BRAND_PURPLE)
+    .setTitle(`Entry [${currentIndex + 1}/${totalEntries}]: ${entry.title}`)
+    .setDescription(entry.description || 'No description provided.')
+    .setColor(entry.isQuarantined ? COLORS.CRIMSON_RED : COLORS.DARK_SLATE)
     .addFields(
-      { name: 'Author / Creator', value: entry.author ? `**${entry.author}**` : '*Community Member*', inline: true },
-      { name: 'Round', value: `${round.title} (${getStatusEmoji(round.status)})`, inline: true },
-      { name: 'Status', value: entry.isQuarantined ? '🚨 **QUARANTINED** *(Suspected Bot Velocity)*' : '✅ Active in Ballot', inline: true },
-      { name: 'Entry ID', value: `\`${entry.id}\``, inline: false }
+      { name: 'Author', value: entry.author ? `\`${entry.author}\`` : '`Unknown`', inline: true },
+      { name: 'Round', value: `${round.title} (${getStatusBadge(round.status)})`, inline: true },
+      { name: 'Status', value: entry.isQuarantined ? '`[QUARANTINED]`' : '`[ACTIVE]`', inline: true },
+      { name: 'Submitted', value: formatDate(entry.createdAt || null), inline: true },
+      { name: 'Entry ID', value: `\`${entry.id}\``, inline: true }
     )
     .setTimestamp();
 
@@ -151,7 +141,7 @@ export function createSingleEntryEmbed(
     embed.setImage(entry.mediaUrl);
   }
 
-  embed.setFooter({ text: `Page ${currentIndex + 1} of ${totalEntries} · Use buttons below to navigate` });
+  embed.setFooter({ text: `Entry ${currentIndex + 1} of ${totalEntries} | Sorted by submission date` });
   return embed;
 }
 
@@ -168,26 +158,26 @@ export function createEntryPaginationRow(
   row.addComponents(
     new ButtonBuilder()
       .setCustomId(`entry_first:${roundId}`)
-      .setLabel('⏮️ First')
+      .setLabel('First')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(currentIndex === 0),
     new ButtonBuilder()
       .setCustomId(`entry_prev:${roundId}:${currentIndex - 1}`)
-      .setLabel('◀️ Previous')
+      .setLabel('Prev')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(currentIndex === 0),
     new ButtonBuilder()
       .setCustomId(`entry_next:${roundId}:${currentIndex + 1}`)
-      .setLabel('Next ▶️')
+      .setLabel('Next')
       .setStyle(ButtonStyle.Primary)
       .setDisabled(currentIndex >= totalEntries - 1),
     new ButtonBuilder()
       .setCustomId(`entry_last:${roundId}:${totalEntries - 1}`)
-      .setLabel('Last ⏭️')
+      .setLabel('Last')
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(currentIndex >= totalEntries - 1),
     new ButtonBuilder()
-      .setLabel('🗳️ Vote Now')
+      .setLabel('Open Web App')
       .setStyle(ButtonStyle.Link)
       .setURL(`${config.webAppUrl}/studio`)
   );
@@ -204,35 +194,30 @@ export function createLeaderboardEmbed(
   entriesMap?: Map<string, Entry>
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(`📊 Live Leaderboard: ${round.title}`)
+    .setTitle(`Leaderboard: ${round.title}`)
     .setDescription(
-      `**Total Ballots Cast:** \`${data.totalBallots}\`\n` +
-      `**Conservation Check:** ${data.isConserved ? '✅ Conserved (6N verified)' : '⚠️ Warning: Anomaly'}\n` +
-      `**Scoring Model:** 3-2-1 Borda with Empirical Bayesian Shrinkage\n` +
-      `*Scores are dynamically regularized against candidate exposure.*`
+      `Total Ballots: \`${data.totalBallots}\`\n` +
+      `Point Conservation: \`${data.isConserved ? 'Valid (6N)' : 'Anomaly'}\``
     )
-    .setColor(round.status === 'open' ? COLORS.EMERALD_GREEN : COLORS.AMBER_GOLD)
+    .setColor(round.status === 'open' ? COLORS.SUCCESS_GREEN : COLORS.WARNING_AMBER)
     .setTimestamp();
 
   if (!data.leaderboard || data.leaderboard.length === 0) {
     embed.addFields({
-      name: 'No Ballots Recorded',
-      value: 'No valid ballots have been submitted for this round yet.',
+      name: 'Standings',
+      value: 'No ballots recorded yet.',
     });
     return embed;
   }
 
-  const medals = ['🥇', '🥈', '🥉'];
   const formattedRows = data.leaderboard.slice(0, 10).map((row, index) => {
-    const rankPrefix = medals[index] || `**${index + 1}.**`;
     const entry = entriesMap?.get(row.entryId);
-    const title = entry ? entry.title : `Entry \`${row.entryId.slice(0, 8)}...\``;
-    const author = entry?.author ? ` *(by ${entry.author})*` : '';
+    const title = entry ? entry.title : `Entry ${row.entryId.slice(0, 8)}...`;
+    const author = entry?.author ? ` (${entry.author})` : '';
 
     return (
-      `${rankPrefix} **${title}**${author}\n` +
-      `> 🏆 **Regularized Score:** \`${row.regularizedTotalScore.toFixed(2)}\` | **Raw Points:** \`${row.rawScore}\`\n` +
-      `> 🗳️ **Votes:** 🥇 \`${row.rank1Count}\` × 3pt | 🥈 \`${row.rank2Count}\` × 2pt | 🥉 \`${row.rank3Count}\` × 1pt`
+      `**${index + 1}. ${title}**${author}\n` +
+      `Score: \`${row.regularizedTotalScore.toFixed(2)}\` pts (Raw: \`${row.rawScore}\`) | Ranks: 1st: \`${row.rank1Count}\`, 2nd: \`${row.rank2Count}\`, 3rd: \`${row.rank3Count}\``
     );
   });
 
@@ -244,10 +229,10 @@ export function createLeaderboardEmbed(
 
   if (data.leaderboard.length > 10) {
     embed.setFooter({
-      text: `Showing top 10 of ${data.leaderboard.length} candidates. Leaderboard cached in Redis (10s TTL).`,
+      text: `Top 10 of ${data.leaderboard.length} entries | Cached (10s TTL)`,
     });
   } else {
-    embed.setFooter({ text: 'Leaderboard cached in Redis (10s TTL)' });
+    embed.setFooter({ text: 'Cached (10s TTL)' });
   }
 
   return embed;
@@ -262,62 +247,56 @@ export function createResultsEmbed(
   entriesMap?: Map<string, Entry>
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(`🏆 Finalized Results: ${round.title}`)
+    .setTitle(`Final Results: ${round.title}`)
     .setDescription(
-      `This round is officially finalized and verified by the governance engine.\n` +
-      `**Total Ballots:** \`${result.totalBallots}\` | **Total Points:** \`${result.totalPoints}\`\n` +
-      `**Finalized At:** ${formatDate(result.finalizedAt)}`
+      `Total Ballots: \`${result.totalBallots}\` | Total Points: \`${result.totalPoints}\`\n` +
+      `Finalized: ${formatDate(result.finalizedAt)}`
     )
-    .setColor(COLORS.BRAND_PURPLE)
+    .setColor(COLORS.BRAND_BLUE)
     .setTimestamp();
 
   if (!result.leaderboard || result.leaderboard.length === 0) {
-    embed.addFields({ name: 'No Results', value: 'No results recorded for this round.' });
+    embed.addFields({ name: 'Results', value: 'No results recorded.' });
     return embed;
   }
 
-  const medals = ['🥇 WINNER', '🥈 2ND PLACE', '🥉 3RD PLACE'];
-  const topPodium = result.leaderboard.slice(0, 3).map((row, index) => {
-    const medal = medals[index] || `#${index + 1}`;
+  const topPodium = result.leaderboard.slice(0, 5).map((row, index) => {
     const entry = entriesMap?.get(row.entryId);
-    const title = entry ? entry.title : `Entry \`${row.entryId.slice(0, 8)}...\``;
-    const author = entry?.author ? ` by **${entry.author}**` : '';
+    const title = entry ? entry.title : `Entry ${row.entryId.slice(0, 8)}...`;
+    const author = entry?.author ? ` (${entry.author})` : '';
 
     return (
-      `**${medal}**: **${title}**${author}\n` +
-      `Final Regularized Score: \`${row.regularizedTotalScore.toFixed(2)}\` points (Raw: \`${row.rawScore}\` pts)`
+      `**${index + 1}. ${title}**${author}\n` +
+      `Score: \`${row.regularizedTotalScore.toFixed(2)}\` pts (Raw: \`${row.rawScore}\`)`
     );
   });
 
   embed.addFields({
-    name: '👑 Official Podium',
+    name: 'Top Standings',
     value: topPodium.join('\n\n'),
     inline: false,
   });
 
-  // Separation statistical proofs
   if (result.separationResults && result.separationResults.length > 0) {
     const separationProofText = result.separationResults.map((sep, idx) => {
       const entryA = entriesMap?.get(sep.candidateA.entryId)?.title || `Entry #${idx + 1}`;
       const entryB = entriesMap?.get(sep.candidateB.entryId)?.title || `Entry #${idx + 2}`;
-      const statusIcon = sep.isStatisticallySeparated ? '✅' : '⚖️';
-      const confidence = (sep.confidenceLevel || '95%');
+      const statusLabel = sep.isStatisticallySeparated ? '[Separated]' : '[Tie]';
 
       return (
-        `${statusIcon} **${entryA}** vs **${entryB}**:\n` +
-        `> Lead Margin: \`+${sep.leadDifference.toFixed(3)}\` pts/ballot | Z-Score: \`${sep.zScore.toFixed(2)}\` (p = \`${sep.pValue.toFixed(4)}\`)\n` +
-        `> Result: ${sep.isStatisticallySeparated ? `Statistically Separated (${confidence} Conf.)` : 'Statistical Tie / Within Variance Margin'}`
+        `\`${statusLabel}\` **${entryA}** vs **${entryB}**\n` +
+        `Margin: \`+${sep.leadDifference.toFixed(3)}\` pts/ballot | Z-Score: \`${sep.zScore.toFixed(2)}\` (p=${sep.pValue.toFixed(4)})`
       );
     });
 
     embed.addFields({
-      name: '📐 Paired Hypothesis Rank Separation Proofs',
+      name: 'Rank Separation Tests',
       value: separationProofText.join('\n\n'),
       inline: false,
     });
   }
 
-  embed.setFooter({ text: 'Snapshotted permanently into PostgreSQL round_results' });
+  embed.setFooter({ text: 'Round finalized' });
   return embed;
 }
 
@@ -330,41 +309,37 @@ export function createTelemetryEmbed(
   entriesMap?: Map<string, Entry>
 ): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle(`🛡️ Raid Telemetry: ${round.title}`)
-    .setDescription(
-      `Statistical anomaly detection for coordinated voting raids and bot velocity spikes.\n` +
-      `\`Z >= 3.0\` triggers automated quarantine and live SSE alert broadcasts.`
-    )
+    .setTitle(`Telemetry: ${round.title}`)
+    .setDescription('Vote velocity and distribution statistics.')
     .setColor(COLORS.DARK_SLATE)
     .setTimestamp();
 
   if (telemetryList.length === 0) {
     embed.addFields({
-      name: 'Clean Telemetry',
-      value: 'No telemetry records or anomalous activities detected for this round.',
+      name: 'Status',
+      value: 'All entries within expected parameters.',
     });
     return embed;
   }
 
   const rows = telemetryList.map((t) => {
     const entry = entriesMap?.get(t.entryId);
-    const title = entry ? entry.title : `Entry \`${t.entryId.slice(0, 8)}...\``;
-    const statusIcon = t.isQuarantined ? '🚨 QUARANTINED' : t.isFlagged ? '⚠️ FLAGGED' : '✅ NORMAL';
+    const title = entry ? entry.title : `Entry ${t.entryId.slice(0, 8)}...`;
+    const statusLabel = t.isQuarantined ? '[QUARANTINED]' : t.isFlagged ? '[FLAGGED]' : '[NORMAL]';
 
     return (
-      `**${title}** — ${statusIcon}\n` +
-      `> Velocity Z-Score: \`${t.velocityZScore.toFixed(2)}\` | Rolling Velocity: \`${t.rollingVelocity.toFixed(2)}\` v/min\n` +
-      `> Skew Ratio: \`${(t.skewRatio || 0).toFixed(2)}\` | Entropy: \`${(t.rankEntropy || 0).toFixed(2)}\``
+      `\`${statusLabel}\` **${title}**\n` +
+      `Velocity Z-Score: \`${t.velocityZScore.toFixed(2)}\` | Rate: \`${t.rollingVelocity.toFixed(2)}\` v/min | Skew: \`${(t.skewRatio || 0).toFixed(2)}\``
     );
   });
 
   embed.addFields({
-    name: 'Entry Telemetry Matrix',
+    name: 'Entries Telemetry',
     value: rows.slice(0, 10).join('\n\n'),
     inline: false,
   });
 
-  embed.setFooter({ text: 'Moderator Telemetry Feed · Powered by @vote-internals/logic' });
+  embed.setFooter({ text: 'Platform Telemetry' });
   return embed;
 }
 
@@ -373,24 +348,23 @@ export function createTelemetryEmbed(
  */
 export function createRaidAlertEmbed(alert: RaidAlertEvent, round?: Round): EmbedBuilder {
   return new EmbedBuilder()
-    .setTitle('🚨 CRITICAL: Coordinated Raid Spike Detected')
+    .setTitle('Security Alert: High Voting Velocity')
     .setDescription(
-      `An anomalous voting velocity spike has exceeded statistical thresholds in round **${round?.title || alert.roundId}**.\n` +
-      `The target entry has been automatically flagged or quarantined to protect leaderboard integrity.`
+      `Velocity threshold exceeded in round: **${round?.title || alert.roundId}**`
     )
     .setColor(COLORS.CRIMSON_RED)
     .addFields(
       { name: 'Target Entry', value: alert.entryTitle ? `**${alert.entryTitle}** (\`${alert.entryId}\`)` : `\`${alert.entryId}\``, inline: true },
-      { name: 'Velocity Z-Score', value: `\`${alert.velocityZScore.toFixed(2)}σ\``, inline: true },
-      { name: 'Quarantine Action', value: alert.isQuarantined ? '🔒 Automatically Quarantined' : '⚠️ Flagged for Review', inline: true },
-      { name: 'Detection Timestamp', value: formatDate(alert.timestamp), inline: false }
+      { name: 'Velocity Z-Score', value: `\`${alert.velocityZScore.toFixed(2)}\``, inline: true },
+      { name: 'Action', value: alert.isQuarantined ? '`[QUARANTINED]`' : '`[FLAGGED]`', inline: true },
+      { name: 'Timestamp', value: formatDate(alert.timestamp), inline: false }
     )
-    .setFooter({ text: 'Raid Detection Engine' })
+    .setFooter({ text: 'Automated Alert' })
     .setTimestamp();
 }
 
 /**
- * Public Theatrical Winner Announcement embed
+ * Public Winner Announcement embed
  */
 export function createWinnerAnnouncementEmbed(
   round: Round,
@@ -399,26 +373,24 @@ export function createWinnerAnnouncementEmbed(
 ): EmbedBuilder {
   const winnerBreakdown = result.leaderboard[0];
   const winnerEntry = winnerBreakdown ? entriesMap?.get(winnerBreakdown.entryId) : undefined;
-  const winnerTitle = winnerEntry ? winnerEntry.title : 'Official Winner';
-  const winnerAuthor = winnerEntry?.author ? ` by **${winnerEntry.author}**` : '';
+  const winnerTitle = winnerEntry ? winnerEntry.title : 'Winner';
+  const winnerAuthor = winnerEntry?.author ? ` (${winnerEntry.author})` : '';
 
   const embed = new EmbedBuilder()
-    .setTitle(`🎉 OFFICIAL WINNER ANNOUNCEMENT: ${round.title}`)
+    .setTitle(`Round Finalized: ${round.title}`)
     .setDescription(
-      `Community voting has officially concluded for **${round.title}**!\n\n` +
-      `🏆 **WINNING ENTRY:**\n` +
-      `# 🥇 **${winnerTitle}**${winnerAuthor}\n\n` +
-      `**Final Regularized Score:** \`${winnerBreakdown?.regularizedTotalScore.toFixed(2) || 0}\` points\n` +
-      `**Total Ballots Cast:** \`${result.totalBallots}\` voters across the community!\n\n` +
-      `Thank you to every artist, animator, and creator who submitted entries and cast their ballots!`
+      `Voting has concluded.\n\n` +
+      `**1st Place:** **${winnerTitle}**${winnerAuthor}\n` +
+      `**Score:** \`${winnerBreakdown?.regularizedTotalScore.toFixed(2) || 0}\` pts\n` +
+      `**Total Ballots:** \`${result.totalBallots}\``
     )
-    .setColor(COLORS.BRAND_PURPLE)
+    .setColor(COLORS.BRAND_BLUE)
     .setTimestamp();
 
   if (winnerEntry?.thumbnailUrl && winnerEntry.thumbnailUrl.startsWith('http')) {
     embed.setImage(winnerEntry.thumbnailUrl);
   }
 
-  embed.setFooter({ text: 'Official Community Announcement' });
+  embed.setFooter({ text: 'Platform Announcements' });
   return embed;
 }

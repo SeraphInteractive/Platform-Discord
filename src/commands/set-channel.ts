@@ -5,32 +5,40 @@ import {
   ChannelType,
 } from 'discord.js';
 import { channelStore } from '../storage/channel-store.js';
+import { isAuthorizedAdmin } from '../config.js';
 
 export const data = new SlashCommandBuilder()
   .setName('set-announcement-channel')
-  .setDescription('⚙️ Configure automated Discord channels for winner proclamations and raid alerts')
+  .setDescription('Configure notification channels for announcements and alerts (Staff only)')
   .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
   .addChannelOption((option) =>
     option
       .setName('channel')
-      .setDescription('The text channel to send automated updates to')
+      .setDescription('The text channel to route automated updates to')
       .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
       .setRequired(true)
   )
   .addStringOption((option) =>
     option
       .setName('type')
-      .setDescription('The category of notifications for this channel')
+      .setDescription('Category of notifications for this channel')
       .setRequired(true)
       .addChoices(
-        { name: '🏆 Official Winner Announcements', value: 'winners' },
-        { name: '🚨 Live Raid & Velocity Alerts', value: 'alerts' },
-        { name: '✨ All Automated Broadcasts', value: 'all' }
+        { name: 'Official Winner Announcements', value: 'winners' },
+        { name: 'Live Raid & Velocity Alerts', value: 'alerts' },
+        { name: 'All Automated Broadcasts', value: 'all' }
       )
   );
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   await interaction.deferReply({ ephemeral: true });
+
+  if (!isAuthorizedAdmin(interaction.user.id)) {
+    await interaction.editReply({
+      content: '`[ACCESS DENIED]` You are not authorized to configure announcement channels.',
+    });
+    return;
+  }
 
   const channel = interaction.options.getChannel('channel', true);
   const type = interaction.options.getString('type', true);
@@ -45,16 +53,16 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const responseMessages: string[] = [];
   if (type === 'winners' || type === 'all') {
-    responseMessages.push(`• **Official Winner Announcements** ➔ <#${channel.id}>`);
+    responseMessages.push(`- Winner Proclamations: <#${channel.id}>`);
   }
   if (type === 'alerts' || type === 'all') {
-    responseMessages.push(`• **Live Raid & Anomaly Alerts** ➔ <#${channel.id}>`);
+    responseMessages.push(`- Security & Telemetry Alerts: <#${channel.id}>`);
   }
 
   await interaction.editReply({
     content:
-      `✅ **Automated Channels Updated Successfully!**\n\n` +
+      `**AUTOMATED CHANNEL ROUTING CONFIGURED**\n\n` +
       responseMessages.join('\n') +
-      `\n\n*Changes are active immediately and saved across bot restarts.*`,
+      `\n\n*Configuration persisted to channel store.*`,
   });
 }

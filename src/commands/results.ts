@@ -1,25 +1,62 @@
 import {
   SlashCommandBuilder,
   ChatInputCommandInteraction,
+  AutocompleteInteraction,
 } from 'discord.js';
 import { apiClient } from '../api/client.js';
 import { createResultsEmbed } from '../bot/embeds.js';
+import {
+  handleRoundAutocomplete,
+  fetchSortedRounds,
+  createRoundSelectMenu,
+} from '../bot/round-selector.js';
 import { Entry } from '../api/types.js';
 
 export const data = new SlashCommandBuilder()
   .setName('results')
-  .setDescription('View official finalized results, podium, and hypothesis rank separation proofs')
+  .setDescription('View audited finalized results, podium, and rank separation proofs')
   .addStringOption((option) =>
     option
-      .setName('round_id')
-      .setDescription('The UUID of the finalized voting round')
-      .setRequired(true)
+      .setName('round')
+      .setDescription('Select a finalized voting round (or leave blank to pick from list)')
+      .setAutocomplete(true)
+      .setRequired(false)
   );
 
-export async function execute(interaction: ChatInputCommandInteraction) {
-  await interaction.deferReply();
+export async function autocomplete(interaction: AutocompleteInteraction) {
+  await handleRoundAutocomplete(interaction);
+}
 
-  const roundId = interaction.options.getString('round_id', true).trim();
+export async function execute(interaction: ChatInputCommandInteraction) {
+  const roundId = interaction.options.getString('round')?.trim();
+
+  if (!roundId) {
+    await interaction.deferReply();
+    try {
+      const rounds = await fetchSortedRounds();
+      const finalizedRounds = rounds.filter((r) => r.status === 'finalized');
+      const targetRounds = finalizedRounds.length > 0 ? finalizedRounds : rounds;
+
+      if (targetRounds.length === 0) {
+        await interaction.editReply({
+          content: 'No voting rounds found.',
+        });
+        return;
+      }
+      const selectRow = createRoundSelectMenu('results', targetRounds, 'Select a round to view results...');
+      await interaction.editReply({
+        content: '**VIEW FINALIZED RESULTS**\nChoose a round from the dropdown menu:',
+        components: [selectRow],
+      });
+    } catch (error: any) {
+      await interaction.editReply({
+        content: `**ERROR:** Failed to fetch rounds: ${error.message || 'API unreachable.'}`,
+      });
+    }
+    return;
+  }
+
+  await interaction.deferReply();
 
   try {
     const [round, resultsData, entries] = await Promise.all([
@@ -37,7 +74,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     await interaction.editReply({ embeds: [embed] });
   } catch (error: any) {
     await interaction.editReply({
-      content: `❌ **Failed to retrieve finalized results:** ${error.message || 'Round may not be finalized yet, or results are unavailable.'}`,
+      content: `**ERROR:** Failed to retrieve finalized results: ${error.message || 'Results unavailable.'}`,
     });
   }
 }

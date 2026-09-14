@@ -1,6 +1,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+export const HARDCODED_ADMIN_DISCORD_IDS: readonly string[] = [
+  '215537065863938049',
+  '212401207694721024',
+  '965511204372086814',
+  '364539598942240768',
+];
+
 export interface BotConfig {
   discordToken: string;
   clientId: string;
@@ -11,6 +18,7 @@ export interface BotConfig {
   defaultAnnouncementChannelId?: string;
   defaultTelemetryAlertChannelId?: string;
   ssePollIntervalMs: number;
+  adminDiscordIds: Set<string>;
 }
 
 export function loadConfig(): BotConfig {
@@ -24,6 +32,12 @@ export function loadConfig(): BotConfig {
   const defaultTelemetryAlertChannelId = process.env.TELEMETRY_ALERT_CHANNEL_ID || undefined;
   const ssePollIntervalMs = parseInt(process.env.SSE_POLL_INTERVAL_MS || '15000', 10);
 
+  const envAdminIds = (process.env.ADMIN_DISCORD_IDS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const adminDiscordIds = new Set([...HARDCODED_ADMIN_DISCORD_IDS, ...envAdminIds]);
+
   return {
     discordToken,
     clientId,
@@ -34,7 +48,12 @@ export function loadConfig(): BotConfig {
     defaultAnnouncementChannelId,
     defaultTelemetryAlertChannelId,
     ssePollIntervalMs,
+    adminDiscordIds,
   };
 }
 
 export const config = loadConfig();
+
+export function isAuthorizedAdmin(userId: string): boolean {
+  return config.adminDiscordIds.has(userId);
+}
