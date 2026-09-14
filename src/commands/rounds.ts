@@ -8,7 +8,7 @@ import { RoundStatus } from '../api/types.js';
 
 export const data = new SlashCommandBuilder()
   .setName('rounds')
-  .setDescription('List all voting rounds in the MCM² voting studio')
+  .setDescription('List all voting rounds in the voting platform')
   .addStringOption((option) =>
     option
       .setName('status')

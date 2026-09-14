@@ -47,7 +47,7 @@ export function createVoteButtonRow(roundId: string): ActionRowBuilder<ButtonBui
   const voteUrl = `${config.webAppUrl}/studio`;
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setLabel('🗳️ Vote in MCM² Studio')
+      .setLabel('🗳️ Open Voting Platform')
       .setStyle(ButtonStyle.Link)
       .setURL(voteUrl)
   );
@@ -58,8 +58,8 @@ export function createVoteButtonRow(roundId: string): ActionRowBuilder<ButtonBui
  */
 export function createRoundsEmbed(rounds: Round[]): EmbedBuilder {
   const embed = new EmbedBuilder()
-    .setTitle('🎬 MCM² Community Voting Rounds')
-    .setDescription('Explore all registered community voting rounds for Minecraft Community Movie Squared.')
+    .setTitle('🎬 Community Voting Rounds')
+    .setDescription('Explore all registered community voting rounds.')
     .setColor(COLORS.BRAND_PURPLE)
     .setTimestamp();
 
@@ -118,7 +118,7 @@ export function createRoundDetailEmbed(round: Round, entries?: Entry[]): EmbedBu
     });
   }
 
-  embed.setFooter({ text: 'MCM² Governance & Voting Engine' });
+  embed.setFooter({ text: 'Governance & Voting Engine' });
   return embed;
 }
 
@@ -264,7 +264,7 @@ export function createResultsEmbed(
   const embed = new EmbedBuilder()
     .setTitle(`🏆 Finalized Results: ${round.title}`)
     .setDescription(
-      `This round is officially finalized and verified by the MCM² governance engine.\n` +
+      `This round is officially finalized and verified by the governance engine.\n` +
       `**Total Ballots:** \`${result.totalBallots}\` | **Total Points:** \`${result.totalPoints}\`\n` +
       `**Finalized At:** ${formatDate(result.finalizedAt)}`
     )
@@ -385,7 +385,7 @@ export function createRaidAlertEmbed(alert: RaidAlertEvent, round?: Round): Embe
       { name: 'Quarantine Action', value: alert.isQuarantined ? '🔒 Automatically Quarantined' : '⚠️ Flagged for Review', inline: true },
       { name: 'Detection Timestamp', value: formatDate(alert.timestamp), inline: false }
     )
-    .setFooter({ text: 'AdonisJS 6 Raid Detection Engine' })
+    .setFooter({ text: 'Raid Detection Engine' })
     .setTimestamp();
 }
 
@@ -410,7 +410,7 @@ export function createWinnerAnnouncementEmbed(
       `# 🥇 **${winnerTitle}**${winnerAuthor}\n\n` +
       `**Final Regularized Score:** \`${winnerBreakdown?.regularizedTotalScore.toFixed(2) || 0}\` points\n` +
       `**Total Ballots Cast:** \`${result.totalBallots}\` voters across the community!\n\n` +
-      `Thank you to every artist, animator, and creator who submitted entries and cast their ballots. Your contributions directly shape Minecraft Community Movie Squared!`
+      `Thank you to every artist, animator, and creator who submitted entries and cast their ballots!`
     )
     .setColor(COLORS.BRAND_PURPLE)
     .setTimestamp();
@@ -419,6 +419,6 @@ export function createWinnerAnnouncementEmbed(
     embed.setImage(winnerEntry.thumbnailUrl);
   }
 
-  embed.setFooter({ text: 'MCM² Studio · Official Community Announcement' });
+  embed.setFooter({ text: 'Official Community Announcement' });
   return embed;
 }

@@ -1,7 +1,7 @@
 {
-  "name": "mcs-bot-worker",
+  "name": "@platform/discord-bot",
   "version": "1.0.0",
-  "description": "Read-only Discord bot and SSE event worker for MCM² ranked voting rounds, leaderboards, telemetry, and automated announcements",
+  "description": "Discord bot and SSE event worker for rankings, leaderboards, telemetry, and automated announcements",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
@@ -17,10 +17,9 @@
     "voting",
     "leaderboard",
     "telemetry",
-    "sse",
-    "mcm2"
+    "sse"
   ],
-  "author": "MCM² Team",
+  "author": "Seraph Interactive",
   "license": "MIT",
   "dependencies": {
     "discord.js": "^14.18.0",

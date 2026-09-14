@@ -28,7 +28,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     : '*Not configured (use /set-announcement-channel)*';
 
   const statusText =
-    `🤖 **MCM² Read-Only Bot & Worker Status**\n\n` +
+    `🤖 **Platform Bot & Worker Status**\n\n` +
     `• **Gateway Ping:** \`${latency >= 0 ? `${latency}ms` : 'Connecting...'}\`\n` +
     `• **Voting API Target:** \`${config.apiBaseUrl}\`\n` +
     `• **Web Studio Target:** \`${config.webAppUrl}\`\n` +

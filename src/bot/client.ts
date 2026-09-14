@@ -26,7 +26,7 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
     readyClient.user.setPresence({
       activities: [
         {
-          name: 'MCM² Voting Rounds | /rounds',
+          name: 'Voting Rounds | /rounds',
           type: ActivityType.Watching,
         },
       ],

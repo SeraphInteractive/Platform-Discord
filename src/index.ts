@@ -3,7 +3,7 @@ import { config } from './config.js';
 
 async function bootstrap() {
   console.log('====================================================');
-  console.log('  MCM² READ-ONLY DISCORD BOT & WORKER STARTING UP   ');
+  console.log('  PLATFORM DISCORD BOT & EVENT WORKER STARTING UP   ');
   console.log('====================================================');
   console.log(`API Base URL:  ${config.apiBaseUrl}`);
   console.log(`Web App URL:   ${config.webAppUrl}`);
