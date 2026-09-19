@@ -11,11 +11,14 @@ import { handleRoundSelectMenuInteraction, handleRoundAutocomplete } from './rou
 import { apiClient } from '../api/client.js';
 import { BackgroundEventWorker } from '../workers/sse-worker.js';
 
+import { config } from '../config.js';
+
 export function createBotClient(): { client: Client; worker: BackgroundEventWorker } {
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildMembers,
     ],
   });
 
@@ -36,6 +39,19 @@ export function createBotClient(): { client: Client; worker: BackgroundEventWork
 
     // Start background event worker
     worker.start();
+  });
+
+  // Auto-grant Observer role when a user joins the server
+  client.on(Events.GuildMemberAdd, async (member) => {
+    const observerRoleId = config.observerRoleId;
+    if (!observerRoleId) return;
+
+    try {
+      await member.roles.add(observerRoleId);
+      console.log(`[Bot] Auto-granted Observer role (${observerRoleId}) to new member: ${member.user.tag} (${member.id})`);
+    } catch (err: any) {
+      console.error(`[Bot] Failed to auto-grant Observer role to ${member.user.tag}:`, err?.message || err);
+    }
   });
 
   client.on(Events.InteractionCreate, async (interaction: Interaction) => {

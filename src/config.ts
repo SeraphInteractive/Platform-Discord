@@ -19,6 +19,9 @@ export interface BotConfig {
   defaultTelemetryAlertChannelId?: string;
   ssePollIntervalMs: number;
   adminDiscordIds: Set<string>;
+  observerRoleId: string;
+  contributorRoleId: string;
+  inviteUrl: string;
 }
 
 export function loadConfig(): BotConfig {
@@ -38,6 +41,10 @@ export function loadConfig(): BotConfig {
     .filter(Boolean);
   const adminDiscordIds = new Set([...HARDCODED_ADMIN_DISCORD_IDS, ...envAdminIds]);
 
+  const observerRoleId = process.env.DISCORD_OBSERVER_ROLE_ID || '1548188404083204196';
+  const contributorRoleId = process.env.DISCORD_CONTRIBUTOR_ROLE_ID || '1548188314970882150';
+  const inviteUrl = process.env.DISCORD_INVITE_URL || 'https://discord.gg/xwetf5cg6c';
+
   return {
     discordToken,
     clientId,
@@ -49,6 +56,9 @@ export function loadConfig(): BotConfig {
     defaultTelemetryAlertChannelId,
     ssePollIntervalMs,
     adminDiscordIds,
+    observerRoleId,
+    contributorRoleId,
+    inviteUrl,
   };
 }
 
